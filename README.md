@@ -2,6 +2,8 @@
 
 This project focuses on crime data cleaning and analysis. It cleans and processes crime data, trains a model to predict crime types, and visualizes crime trends over time. The data comes from a secondary source and is analyzed using Python, with the results displayed in a dashboard built with Streamlit.
 
+**Group 10 – Topic: Crime Fighting**
+
 ---
 
 ## Prerequisites
@@ -122,11 +124,11 @@ The app will open in your default browser and allow you to explore the crime tre
 
 ## License
 
-This project is open-source and available under the MIT License.
+This project is not open-source and is intended for educational purposes as part of Group 10's data science project on crime fighting.
 
 ---
 
 ## Acknowledgments
 
 - Crime dataset by [Isha Jangir](https://www.kaggle.com/ishajangir).
-- Thanks to the contributors of the libraries used in this project: Pandas, Scikit-Learn, Plotly, Seaborn, Streamlit, etc.# CrimeFighting
+- Thanks to the contributors of the libraries used in this project: Pandas, Scikit-Learn, Plotly, Seaborn, Streamlit, etc.
