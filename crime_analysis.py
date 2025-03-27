@@ -3,6 +3,7 @@ import zipfile
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.ensemble import RandomForestClassifier
@@ -10,205 +11,226 @@ from sklearn.metrics import classification_report, confusion_matrix
 from imblearn.over_sampling import SMOTE
 import plotly.express as px
 
-# Step 1: Define dataset paths
-DATASET_PATH = "crime-data.zip"
+# Step 1: Define Dataset Paths - Set paths for the dataset ZIP file and extracted folder.
+DATASET_PATH = "crime-statistics-for-south-africa.zip"
 EXTRACTED_FOLDER = "crime_data"
 
-# Step 2: Check if dataset is already downloaded
+# Step 2: Check if Dataset is Already Available - If the dataset isn't found, attempt to download it from Kaggle.
 if not os.path.exists(DATASET_PATH) and not os.path.exists(EXTRACTED_FOLDER):
     print("Downloading dataset from Kaggle...")
-    os.system("kaggle datasets download -d ishajangir/crime-data -p .")
+    os.system(
+        "kaggle datasets download -d slwessels/crime-statistics-for-south-africa -p ."
+    )
 else:
     print("Dataset already exists. Skipping download.")
 
-# Step 3: Extract the dataset if not already extracted
+# Step 3: Extract the Dataset if Not Already Extracted - Unzip the dataset only if the extracted folder doesn’t exist.
 if not os.path.exists(EXTRACTED_FOLDER):
     if os.path.exists(DATASET_PATH):
         print("Extracting dataset...")
-        with zipfile.ZipFile(DATASET_PATH, 'r') as zip_ref:
+        with zipfile.ZipFile(DATASET_PATH, "r") as zip_ref:
             zip_ref.extractall(EXTRACTED_FOLDER)
     else:
-        raise FileNotFoundError(f"ZIP file '{DATASET_PATH}' not found, and no extracted data found.")
+        raise FileNotFoundError(
+            f"ZIP file '{DATASET_PATH}' not found, and no extracted data found."
+        )
 
-# Step 4: Load the dataset
+# Step 4: Load the dataset - Identify and validate the correct CSV file and display available columns and select relevant ones.
 csv_files = [f for f in os.listdir(EXTRACTED_FOLDER) if f.endswith(".csv")]
 if not csv_files:
     raise FileNotFoundError("No CSV file found in the dataset folder!")
 
-file_path = os.path.join(EXTRACTED_FOLDER, csv_files[0])
+correct_file = "SouthAfricaCrimeStats_v2.csv"
+file_path = os.path.join(EXTRACTED_FOLDER, correct_file)
+
+if not os.path.exists(file_path):
+    raise FileNotFoundError(
+        f"Expected file {correct_file} not found in {EXTRACTED_FOLDER}."
+    )
+
 print(f"Loading dataset: {file_path}")
 
 # Check available columns
 available_cols = pd.read_csv(file_path, nrows=5).columns.tolist()
 print("Available columns in dataset:", available_cols)
 
-# Define columns to use
-use_cols = ["AREA", "DATE OCC", "TIME OCC", "Crm Cd Desc", "AREA NAME", "Premis Desc", "Status"]
+# Define columns to use - updated for SA dataset
+use_cols = ["Province", "Station", "Category"] + [
+    col for col in available_cols if "-" in col
+]  # Include year columns
 missing_cols = [col for col in use_cols if col not in available_cols]
 
 if missing_cols:
     raise ValueError(f"Missing columns in dataset: {missing_cols}")
 
 crime_df = pd.read_csv(file_path, usecols=use_cols, low_memory=False)
-crime_df = crime_df.sample(frac=0.3, random_state=42)  # Take 30% of the data
+crime_df = crime_df.sample(n=2000, random_state=42)  # Sample 2000 records
 
+# Step 5: Additional SA-Specific Preprocessing - Convert year columns to numeric format and create a new feature Total_Crimes summing yearly crime counts.
+# Convert year columns to numeric
+year_cols = [col for col in crime_df.columns if "-" in col]
+crime_df[year_cols] = crime_df[year_cols].apply(pd.to_numeric, errors="coerce")
 
-# Convert DATE OCC safely
-crime_df["DATE OCC"] = pd.to_datetime(crime_df["DATE OCC"], format="%m/%d/%Y %I:%M:%S %p", errors="coerce")
+# Add total crimes feature
+crime_df["Total_Crimes"] = crime_df[year_cols].sum(axis=1)
 
-# Extract Year, Month, and Day
-crime_df["Year"] = crime_df["DATE OCC"].dt.year.astype("int16")
-crime_df["Month"] = crime_df["DATE OCC"].dt.month.astype("int8")
-crime_df["Day"] = crime_df["DATE OCC"].dt.day.astype("int8")
+# Step 6: Data Overview - Display dataset information (e.g., data types, missing values).
+print("\nBasic dataset info:")
+print(crime_df.info())
 
-# Convert TIME OCC
-crime_df["TIME OCC"] = crime_df["TIME OCC"].astype("int16")
-
-
-# Extract years
-crime_df["Year"] = crime_df["DATE OCC"].dt.year
-
-
-# Print unique years before any filtering
-print("Unique years in raw dataset:", crime_df["Year"].unique())
-
-# Step 5: Convert DATE OCC column to datetime
-print("Before date conversion:")
-print(crime_df["DATE OCC"].head(10))  # Print sample dates for debugging
-
-# Automatically infer date format
-crime_df["DATE OCC"] = pd.to_datetime(crime_df["DATE OCC"], errors="coerce")
-
-print("Unique years after date conversion:", crime_df["DATE OCC"].dt.year.unique())
-
-# Print results after conversion
-print("\nAfter date conversion:")
-print(crime_df["DATE OCC"].head(10))
-
-# Step 6: Drop rows with missing dates
-print("Rows before dropping NaNs:", crime_df.shape)
-crime_df.dropna(subset=["DATE OCC"], inplace=True)
-print("Rows after dropping NaNs:", crime_df.shape)
-
-# Verify unique years after dropping NaNs
-print("Unique years after dropping NaNs:", crime_df["DATE OCC"].dt.year.unique())
-
-
-# Debug: Check if dataset is still empty
-if crime_df.empty:
-    raise ValueError("Dataset is still empty after date conversion! Check date parsing.")
-
-
-# Step 6: Drop rows with missing dates
-print("Before dropping NaNs:", crime_df.shape)
-crime_df.dropna(subset=["DATE OCC"], inplace=True)
-print("After dropping NaNs:", crime_df.shape)
-
-# Step 7: Extract Year, Month, Day
-crime_df["Year"] = crime_df["DATE OCC"].dt.year.astype("int16")
-crime_df["Month"] = crime_df["DATE OCC"].dt.month.astype("int8")
-crime_df["Day"] = crime_df["DATE OCC"].dt.day.astype("int8")
-
-# Step 8: Drop the original date column
-crime_df.drop(columns=["DATE OCC"], inplace=True)
-
-# Step 9: Convert categorical columns to category type
-categorical_cols = ["Crm Cd Desc", "AREA NAME", "Premis Desc", "Status"]
+# Step 7: Convert Categorical Columns - Convert 'Province', 'Station', and 'Category' into categorical types.
+categorical_cols = ['Province', 'Station', 'Category']
 for col in categorical_cols:
-    crime_df[col] = crime_df[col].astype("category")
+    if col in crime_df.columns:
+        crime_df[col] = crime_df[col].astype('category')
 
-# Step 10: Debug: Check unique values in categorical columns
-print("Unique values before encoding:")
+# Step 8: Check unique values in categorical columns - Display unique values for categorical features before encoding.
+print("\nUnique values in categorical columns:")
+for col in categorical_cols:
+    if col in crime_df.columns:
+        print(f"{col}: {crime_df[col].nunique()} unique values")
+
+# Step 9: Debug: Check unique values in categorical columns
+print("\nUnique values before encoding:")
 for col in categorical_cols:
     print(f"{col}: {crime_df[col].nunique()} unique values")
 
-# Ensure dataset is not empty before encoding
-if crime_df.empty:
-    raise ValueError("Dataset is empty before encoding! Check previous steps.")
-
-# Step 11: Encode categorical columns
-encoders = {}  # Dictionary to store mappings
+# Step 10: Encode categorical columns - Apply LabelEncoder to categorical columns.
+encoders = {}
 for col in categorical_cols:
     if crime_df[col].nunique() > 0:
         encoder = LabelEncoder()
         crime_df[col] = encoder.fit_transform(crime_df[col].astype(str))
-        encoders[col] = encoder  # Store the encoder for decoding later
-    else:
-        print(f"Skipping encoding for {col}, it has no data!")
+        encoders[col] = encoder
 
-# Step 12: Select features and target
-features = ["AREA", "Year", "Month", "Day", "TIME OCC", "AREA NAME", "Premis Desc", "Status"]
-target = "Crm Cd Desc"
+# Step 11: Select Features and Target - Use year-based columns as features and assign 'Category' as the target variable.
+features = year_cols
+target = 'Category' if 'Category' in crime_df.columns else None
 
-# Debug: Check dataset size before splitting
-print("Dataset size before splitting:", crime_df.shape)
+if not target:
+    raise ValueError("Target column 'Category' not found in dataset")
 
+# Step 12: Split the dataset - Divide into training (80%) and testing (20%) sets.
 X = crime_df[features]
 y = crime_df[target]
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
 
-# Ensure X and y are not empty
-if len(X) == 0 or len(y) == 0:
-    raise ValueError("X or y is empty before splitting! Debug preprocessing steps.")
-
-# Step 13: Split dataset
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# Step 14: Handle class imbalance using SMOTE
-# Remove classes with fewer than 2 samples
+# Step 13: Handle Class Imbalance using SMOTE - Drop underrepresented classes with fewer than 7 samples and apply SMOTE to oversample the training data.
 class_counts = y_train.value_counts()
 small_classes = class_counts[class_counts < 2].index
+print("\nDropping classes with insufficient samples:", small_classes.tolist())
 
-print("Dropping the following classes due to insufficient samples:")
-print(small_classes)
-
-# Keep only classes with more than `n_neighbors` samples
 valid_classes = class_counts[class_counts > 6].index
 mask = y_train.isin(valid_classes)
 X_train = X_train[mask]
 y_train = y_train[mask]
 
-smote = SMOTE(sampling_strategy="auto", k_neighbors=1, random_state=42)
+smote = SMOTE(k_neighbors=3, random_state=42)
 X_train, y_train = smote.fit_resample(X_train, y_train)
 
-# Step 15: Standardize features
+# Step 14: Standardize Features - Normalize the dataset using StandardScaler.
 scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
-# Step 16: Train a Random Forest model
+# Step 15: Train a Random Forest model - Fit a RandomForestClassifier to the training data.
 clf = RandomForestClassifier(n_estimators=200, random_state=42)
 clf.fit(X_train, y_train)
 
-# Step 17: Evaluate the model
+# Step 16: Evaluate the model - Generate a classification report and confusion matrix.
 y_pred = clf.predict(X_test)
+print("\nClassification Report:")
 print(classification_report(y_test, y_pred, zero_division=1))
+print("\nConfusion Matrix:")
 print(confusion_matrix(y_test, y_pred))
 
-# Step 18: Visualize crime trends
-# Aggregate crimes by full date (Year, Month, Day, Hour)
-# Extract hour from TIME OCC (e.g., 1530 -> 15)
-crime_df["Hour"] = crime_df["TIME OCC"] // 100
 
-# Create DateTime column
-crime_df["DateTime"] = pd.to_datetime(crime_df[["Year", "Month", "Day"]]) + pd.to_timedelta(crime_df["Hour"], unit="h")
+# Step 17: Visualize crime trends - Crime Categories – Bar plot showing total crimes by category, crime Trends Over the Years – Bar plot highlighting peak and lowest crime years, time Series Analysis – Line chart of average crime rates over time, category-Year Heatmap – Heatmap displaying crime trends per category, feature Importance – Bar chart ranking feature importance in classification, interactive Plotly Visualization – Interactive crime category analysis.
+plt.figure(figsize=(14, 7))
 
-# Aggregate crimes by hour
-crime_hourly = crime_df.groupby("Hour").size().reset_index(name="Crime Count")
+# 1. Crime Categories Visualization
+crime_by_category = (
+    crime_df.groupby("Category")["Total_Crimes"].sum().sort_values(ascending=False)
+)
+sns.barplot(x=crime_by_category.index, y=crime_by_category.values, palette="rocket")
+plt.xticks(rotation=90)
+plt.title("South Africa: Total Crimes by Category")
+plt.xlabel("Crime Category")
+plt.ylabel("Total Crimes (2005-2016)")
+plt.tight_layout()
+plt.show()
 
-# Create bar chart
-fig = px.bar(crime_hourly, x="Hour", y="Crime Count", title="Crime Count by Hour of the Day",
-labels={"Hour": "Hour of the Day", "Crime Count": "Total Crimes"}, color="Crime Count")
+# 2. Crime Trends Over Years
+yearly_totals = crime_df[year_cols].sum().reset_index()
+yearly_totals.columns = ["Year", "Total Crimes"]
 
+max_year = yearly_totals.loc[yearly_totals["Total Crimes"].idxmax()]
+min_year = yearly_totals.loc[yearly_totals["Total Crimes"].idxmin()]
+
+plt.figure(figsize=(14, 7))
+sns.barplot(
+    x="Year",
+    y="Total Crimes",
+    data=yearly_totals,
+    palette=[
+        "red" if x == max_year["Year"] else "blue" if x == min_year["Year"] else "gray"
+        for x in yearly_totals["Year"]
+    ],
+)
+plt.title("South Africa: Crime Trends by Year")
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+print(f"\nPeak crime year: {max_year['Year']} ({max_year['Total Crimes']} crimes)")
+print(f"Lowest crime year: {min_year['Year']} ({min_year['Total Crimes']} crimes)")
+
+# 3. Enhanced Time Series Analysis
+plt.figure(figsize=(14, 7))
+crime_df[year_cols].mean().plot(
+    kind="line", marker="o", linestyle="--", color="green", linewidth=2
+)
+plt.title("South Africa: Average Crime Rate by Year")
+plt.xlabel("Year")
+plt.ylabel("Average Crime Count")
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# 4. Category-Year Heatmap
+plt.figure(figsize=(12, 8))
+category_year = crime_df.groupby("Category")[year_cols].sum()
+sns.heatmap(category_year, cmap="YlOrRd", annot=True, fmt=".0f")
+plt.title("South Africa: Crime Categories by Year")
+plt.tight_layout()
+plt.show()
+
+# 5. Feature Importance
+plt.figure(figsize=(10, 6))
+feat_importances = pd.Series(clf.feature_importances_, index=features)
+feat_importances.nlargest(10).plot(kind="barh")
+plt.title("Feature Importance for Crime Category Prediction")
+plt.tight_layout()
+plt.show()
+
+# 6. Interactive Plotly Visualization
+fig = px.bar(
+    crime_df,
+    x="Category",
+    y="Total_Crimes",
+    color="Category",
+    title="Interactive View of Crimes by Category",
+    hover_data=year_cols,
+)
 fig.show()
 
-
-# Step 19: Save the transformed dataset to a new CSV file
+# Step 18: Save the Transformed Dataset - Convert encoded labels back to original values and Sort the dataset and save it as "sa_crime_data_transformed.csv".
 for col, encoder in encoders.items():
     crime_df[col] = encoder.inverse_transform(crime_df[col])
 
-crime_df.sort_values(by=["Year", "Month", "Day", "TIME OCC"], inplace=True)
-
-# Save the transformed dataset
-transformed_file_path = "crime_data_transformed.csv"
+crime_df.sort_values(by=year_cols, inplace=True)
+transformed_file_path = "sa_crime_data_transformed.csv"
 crime_df.to_csv(transformed_file_path, index=False)
-print(f"Transformed dataset saved to {transformed_file_path}")
+print(f"\nTransformed dataset saved to {transformed_file_path}")
