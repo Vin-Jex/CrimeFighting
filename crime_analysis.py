@@ -7,13 +7,20 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import (
+    classification_report,
+    confusion_matrix,
+    ConfusionMatrixDisplay,
+)
 from imblearn.over_sampling import SMOTE
 import plotly.express as px
 
 # Step 1: Define Dataset Paths - Set paths for the dataset ZIP file and extracted folder.
 DATASET_PATH = "crime-statistics-for-south-africa.zip"
 EXTRACTED_FOLDER = "crime_data"
+
+# Create directory for saving images
+os.makedirs("images", exist_ok=True)
 
 # Step 2: Check if Dataset is Already Available - If the dataset isn't found, attempt to download it from Kaggle.
 if not os.path.exists(DATASET_PATH) and not os.path.exists(EXTRACTED_FOLDER):
@@ -79,10 +86,10 @@ print("\nBasic dataset info:")
 print(crime_df.info())
 
 # Step 7: Convert Categorical Columns - Convert 'Province', 'Station', and 'Category' into categorical types.
-categorical_cols = ['Province', 'Station', 'Category']
+categorical_cols = ["Province", "Station", "Category"]
 for col in categorical_cols:
     if col in crime_df.columns:
-        crime_df[col] = crime_df[col].astype('category')
+        crime_df[col] = crime_df[col].astype("category")
 
 # Step 8: Check unique values in categorical columns - Display unique values for categorical features before encoding.
 print("\nUnique values in categorical columns:")
@@ -105,7 +112,7 @@ for col in categorical_cols:
 
 # Step 11: Select Features and Target - Use year-based columns as features and assign 'Category' as the target variable.
 features = year_cols
-target = 'Category' if 'Category' in crime_df.columns else None
+target = "Category" if "Category" in crime_df.columns else None
 
 if not target:
     raise ValueError("Target column 'Category' not found in dataset")
@@ -139,18 +146,26 @@ X_test = scaler.transform(X_test)
 clf = RandomForestClassifier(n_estimators=200, random_state=42)
 clf.fit(X_train, y_train)
 
-# Step 16: Evaluate the model - Generate a classification report and confusion matrix.
+# Step 16: Evaluate the model
 y_pred = clf.predict(X_test)
 print("\nClassification Report:")
 print(classification_report(y_test, y_pred, zero_division=1))
-print("\nConfusion Matrix:")
-print(confusion_matrix(y_test, y_pred))
 
+# Generate and save confusion matrix
+plt.figure(figsize=(10, 8))
+cm = confusion_matrix(y_test, y_pred)
+disp = ConfusionMatrixDisplay(
+    confusion_matrix=cm, display_labels=encoders[target].classes_
+)
+disp.plot(cmap="Blues", values_format="d")
+plt.title("Confusion Matrix for Crime Category Prediction")
+plt.savefig("images/confusion_matrix.png", bbox_inches="tight", dpi=300)
+plt.show()
 
-# Step 17: Visualize crime trends - Crime Categories – Bar plot showing total crimes by category, crime Trends Over the Years – Bar plot highlighting peak and lowest crime years, time Series Analysis – Line chart of average crime rates over time, category-Year Heatmap – Heatmap displaying crime trends per category, feature Importance – Bar chart ranking feature importance in classification, interactive Plotly Visualization – Interactive crime category analysis.
-plt.figure(figsize=(14, 7))
+# Step 17: Visualize crime trends with image saving
 
 # 1. Crime Categories Visualization
+plt.figure(figsize=(14, 7))
 crime_by_category = (
     crime_df.groupby("Category")["Total_Crimes"].sum().sort_values(ascending=False)
 )
@@ -160,6 +175,7 @@ plt.title("South Africa: Total Crimes by Category")
 plt.xlabel("Crime Category")
 plt.ylabel("Total Crimes (2005-2016)")
 plt.tight_layout()
+plt.savefig("images/crime_categories.png", bbox_inches="tight", dpi=300)
 plt.show()
 
 # 2. Crime Trends Over Years
@@ -170,7 +186,7 @@ max_year = yearly_totals.loc[yearly_totals["Total Crimes"].idxmax()]
 min_year = yearly_totals.loc[yearly_totals["Total Crimes"].idxmin()]
 
 plt.figure(figsize=(14, 7))
-sns.barplot(
+ax = sns.barplot(
     x="Year",
     y="Total Crimes",
     data=yearly_totals,
@@ -181,7 +197,25 @@ sns.barplot(
 )
 plt.title("South Africa: Crime Trends by Year")
 plt.xticks(rotation=45)
+
+# Annotate max and min years
+ax.text(
+    list(yearly_totals["Year"]).index(max_year["Year"]),
+    max_year["Total Crimes"] * 0.95,
+    "Peak Year",
+    ha="center",
+    color="white",
+)
+ax.text(
+    list(yearly_totals["Year"]).index(min_year["Year"]),
+    min_year["Total Crimes"] * 0.95,
+    "Lowest Year",
+    ha="center",
+    color="white",
+)
+
 plt.tight_layout()
+plt.savefig("images/crime_trends.png", bbox_inches="tight", dpi=300)
 plt.show()
 
 print(f"\nPeak crime year: {max_year['Year']} ({max_year['Total Crimes']} crimes)")
@@ -197,6 +231,7 @@ plt.xlabel("Year")
 plt.ylabel("Average Crime Count")
 plt.grid(True)
 plt.tight_layout()
+plt.savefig("images/time_series.png", bbox_inches="tight", dpi=300)
 plt.show()
 
 # 4. Category-Year Heatmap
@@ -205,6 +240,7 @@ category_year = crime_df.groupby("Category")[year_cols].sum()
 sns.heatmap(category_year, cmap="YlOrRd", annot=True, fmt=".0f")
 plt.title("South Africa: Crime Categories by Year")
 plt.tight_layout()
+plt.savefig("images/heatmap.png", bbox_inches="tight", dpi=300)
 plt.show()
 
 # 5. Feature Importance
@@ -213,9 +249,10 @@ feat_importances = pd.Series(clf.feature_importances_, index=features)
 feat_importances.nlargest(10).plot(kind="barh")
 plt.title("Feature Importance for Crime Category Prediction")
 plt.tight_layout()
+plt.savefig("images/feature_importance.png", bbox_inches="tight", dpi=300)
 plt.show()
 
-# 6. Interactive Plotly Visualization
+# 6. Interactive Plotly Visualization (saved as HTML)
 fig = px.bar(
     crime_df,
     x="Category",
@@ -224,9 +261,9 @@ fig = px.bar(
     title="Interactive View of Crimes by Category",
     hover_data=year_cols,
 )
-fig.show()
+fig.write_html("images/interactive_plot.html")
 
-# Step 18: Save the Transformed Dataset - Convert encoded labels back to original values and Sort the dataset and save it as "sa_crime_data_transformed.csv".
+# Step 18: Save the Transformed Dataset
 for col, encoder in encoders.items():
     crime_df[col] = encoder.inverse_transform(crime_df[col])
 
