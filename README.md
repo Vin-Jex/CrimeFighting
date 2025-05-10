@@ -1,243 +1,239 @@
-# Crime Data Analysis for South Africa - *Group 10*
+# Crime Data Analysis Across Africa - *Group 10*
 
-## Project Overview - Understanding Crime Patterns in South Africa
-This project analyzes crime statistics in South Africa to identify patterns, trends, and predictive factors. We employ data science techniques to process, visualize, and model crime data from 2005-2016 across different provinces and crime categories. 
+## Project Overview – Understanding Crime Patterns Across Africa
 
-## What We Did  
-We studied crime data from South Africa (2005-2016) to answer:  
-1. What crimes happen most often?  
-2. When do crimes peak each year?  
-3. Can we predict crime types based on patterns?  
+This project analyzes crime data across African countries to identify patterns, trends, and predictive factors. We use data science techniques to clean, visualize, and model crime data, helping uncover insights that can support security policy, resource planning, and law enforcement strategy.
 
-![Crime Categories](images/crime_categories.png)  
-*This shows which crimes happen most often in South Africa*  
+---
 
-## Our Step-by-Step Process  
-### 1. Getting the Crime Data  
-- We used real crime numbers from police stations  
-- Downloaded from Kaggle (a data website)  
-- The data came as a compressed ZIP file with spreadsheets  
+## What We Did
 
-### 2. Cleaning the Data  
-- Fixed messy numbers (like "N/A" or blanks)  
-- Added up crimes from all years into one "Total Crimes" column  
-- Gave numbers to categories like "Burglary" → 1, "Assault" → 2 (so computers can understand)  
+We analyzed data from the **Africa Organised Crime Index - 2023** to answer:
 
-### 3. Looking for Patterns  
-We made pictures from the data to spot trends:  
+1. What are the most common and severe crimes across Africa?
+2. How does crime relate to national resilience?
+3. Can we predict crime levels based on socio-economic indicators?
 
-**A. Crime Over Time**  
-![Crime Trends](images/crime_trends.png)  
-*2010 had the most crimes, while 2015 had the least*  
+![Top 10 Countries by Crime Index](images/top_10_countries_crime_index.png)
+*Figure 1: African countries with the highest crime index*
 
-**B. Crime Heatmap**  
-![Heatmap](images/heatmap.png)  
-*Darker colors = more crimes. Shows which crimes spiked in certain years*  
+---
 
-### 4. Building a Smart Prediction System  
-We taught a computer program to recognize crime patterns:  
+## Our Step-by-Step Process
 
-1. **Preparing the Data**  
-   - Split info into "things we know" (crime numbers each year) and "what we want to predict" (crime type)  
-   - Made sure all crime types had enough examples  
+### 1. Data Collection
 
-2. **Training the System**  
-   - Used a "Random Forest" method (like many small decision trees working together)  
-   - The system learned from 80% of our data  
+* **Source:** [Africa Organised Crime Index - 2023](https://ocindex.net/)
+* Downloaded as a structured CSV from the official site
+* Included metrics like:
 
-3. **Testing the System**  
-   - Used the remaining 20% to check if predictions were correct  
-   - Created this report card:  
+  * **Criminality** (overall crime index)
+  * **Resilience** (ability to resist/mitigate crime)
+  * Sub-scores for state-embedded actors, criminal networks, etc.
 
-![Confusion Matrix](images/confusion_matrix.png)  
-*How well our system guesses crime types. Diagonal green = correct guesses*  
+---
 
-### Key Discoveries  
-1. Theft and burglary are the most common crimes  
-2. Crime rates change significantly year to year  
-3. Our system can predict crime types with __% accuracy  
+### 2. Data Cleaning & Preprocessing
 
-## Why This Matters  
-This helps police and government:  
-- Know when/where to send more officers  
-- Understand which crime prevention programs work  
-- Prepare resources for high-crime seasons  
+* Removed missing values
+* Normalized and encoded categorical fields
+* Engineered features like:
 
-## For Non-Technical Team Members  
-You don't need to understand the code! Focus on:  
-- The colorful charts showing crime patterns  
-- Our final predictions about crime trends  
-- How these findings could help communities  
+  * Total Crime Score
+  * Crime Level Labels
+  * Regional Groupings
 
-## Technical Details
-![Crime Categories](images/crime_categories.png)
-*Figure 1: Distribution of crime categories in South Africa*
+---
 
-## Data Pipeline Steps
+### 3. Exploratory Data Analysis (EDA)
 
-### 1. Data Acquisition
-- Source: Kaggle dataset "Crime Statistics for South Africa"
-- Download method: Kaggle API (requires authentication)
-- Original format: ZIP file containing CSV data
+#### A. Crime Index by Country
 
-```python
-# Download dataset if not available
-if not os.path.exists(DATASET_PATH):
-    os.system("kaggle datasets download -d slwessels/crime-statistics-for-south-africa -p .")
-```
+![Crime Index by Country](images/crime_index_countries.png)
+*Figure 2: Crime index across African nations*
 
-### 2. Data Extraction
-- Extracted from ZIP format
-- Validated file existence and structure
+#### B. Correlation Heatmap
 
-### 3. Data Loading
-- Selected relevant columns:
-  - Geographic: Province, Station
-  - Temporal: Yearly columns (2005-2016)
-  - Categorical: Crime Category
-- Sampled 2000 records for initial analysis
+![Correlation Heatmap](images/correlation_heatmap.png)
+*Figure 3: Correlations between crime, resilience, and related indicators*
 
-```python
-# Load dataset with selected columns
-use_cols = ["Province", "Station", "Category"] + [col for col in available_cols if "-" in col]
-crime_df = pd.read_csv(file_path, usecols=use_cols, low_memory=False)
-crime_df = crime_df.sample(n=2000, random_state=42)
-```
+#### C. Crime vs Resilience
 
-### 4. Data Preprocessing
+![Crime vs Resilience](images/crime_vs_resilience.png)
+*Figure 4: Inverse relationship between national resilience and crime index*
 
-#### a. Type Conversion
-- Converted year columns to numeric
-- Created total crimes feature by summing across years
+#### D. Feature Pair Analysis
 
-```python
-# Convert year columns and create total
-year_cols = [col for col in crime_df.columns if "-" in col]
-crime_df[year_cols] = crime_df[year_cols].apply(pd.to_numeric, errors="coerce")
-crime_df["Total_Crimes"] = crime_df[year_cols].sum(axis=1)
-```
+![Pairplot of Key Features](images/pairplot_features.png)
+*Figure 5: Pairwise relationships among crime-related features*
 
-#### b. Categorical Encoding
-- Encoded Province, Station, and Category using LabelEncoder
+#### E. Drug Trafficking Analysis
 
-```python
-for col in categorical_cols:
-    encoder = LabelEncoder()
-    crime_df[col] = encoder.fit_transform(crime_df[col].astype(str))
-    encoders[col] = encoder
-```
+![Drug Trafficking Trends](images/drug_trafficking.png)
+*Figure 6: Drug trafficking scores across the continent*
+
+#### F. Criminality Score Distribution
+
+![Criminality Score Distribution](images/criminality_score_distribution.png)
+*Figure 7: Distribution of total criminality scores*
+
+#### G. Crime Level by Resilience Category
+
+![Resilience vs Crime Level](images/resilience_score_by_crime_level.png)
+*Figure 8: Countries with lower resilience often show higher crime levels*
+
+---
+
+### 4. Predictive Modeling
+
+We used a **Random Forest Classifier** to predict crime levels (e.g., low, medium, high) from socio-political indicators.
+
+* **SMOTE** was used to balance underrepresented classes
+* **StandardScaler** applied to normalize features
+* Model achieved strong performance on unseen data
+
+![Crime Level Confusion Matrix](images/crime_level_confusion_matrix.png)
+*Figure 9: Model accuracy shown via confusion matrix*
 
 ![Feature Importance](images/feature_importance.png)
-*Figure 2: Most important temporal features for crime prediction*
+*Figure 10: Which features were most useful for predicting crime levels*
 
-### 5. Exploratory Data Analysis (EDA)
+---
 
-#### Key Visualizations:
+### 5. Future Predictions
 
-1. **Crime Trends Over Time**
-   - Identified peak and lowest crime years
-   - Analyzed overall temporal patterns
+Using the dataset from **2019**, **2021**, and **2023**, we applied machine learning models to **predict crime trends in Africa** from 2024 to 2027. By training on historical data and incorporating socio-economic and resilience indicators, we forecast crime levels and trends across countries.
 
-![Crime Trends](images/crime_trends.png)
-*Figure 3: Annual crime trends with peak and lowest years highlighted*
+* **Predicted Outcomes:**
 
-2. **Category-Year Heatmap**
-   - Visualized crime distribution across categories and years
+  * We anticipate an increase in organized crime in certain regions due to rising political instability and economic downturns.
+  * Countries with lower resilience are projected to face greater challenges in crime control, influencing future crime index rankings.
+* **Modeling Approach:**
 
-![Heatmap](images/heatmap.png)
-*Figure 4: Heatmap showing crime patterns across categories and years*
+  * We used **time series forecasting** techniques to estimate future crime levels.
+  * Models include **ARIMA** and **LSTM** (Long Short-Term Memory) networks for capturing trends in historical data and making future predictions.
 
-3. **Time Series Analysis**
-   - Examined average crime rates over time
+![Comprehensive Regional Forecast](images/comprehensive_regional_forecast.png)
+*Figure 11: Predicted crime trends for selected African countries (2024-2027)*
 
-![Time Series](images/time_series.png)
-*Figure 5: Time series of average crime rates*
+---
 
-### 6. Model Development
+### 6. Bonus: Interactive Visualizations
 
-#### a. Data Splitting
-- 80% training, 20% testing split
-- Stratified sampling to maintain class distribution
+Explore multi-dimensional relationships using these interactive tools:
 
-```python
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
+1. [📁 interactive\_3d\_plot.html](images/interactive_3d_plot.html) — Explore crime data in 3D.
+2. [📁 interactive\_regional\_forecast.html](images/interactive_regional_forecast.html) — Explore regional crime predictions for 2024-2027.
+
+*Open these files in any browser for an interactive experience.*
+
+---
+
+## Key Insights
+
+* Crime is not randomly distributed — it's tightly linked to governance and resilience
+* Resilient countries like Botswana and Namibia score lower in crime despite geographic proximity to higher-risk regions
+* Drug trafficking and criminal networks are major contributors to overall crime scores
+* Our model predicts crime levels with **\[insert accuracy]%** accuracy
+* The future crime prediction models suggest varying trends across the continent, with some regions expected to experience worsening crime conditions due to political and economic instability.
+
+---
+
+## Why This Matters
+
+These insights can help:
+
+* Governments prioritize reforms in high-risk zones
+* NGOs allocate resources to support vulnerable populations
+* Researchers uncover links between governance, resilience, and criminal behavior
+* Policymakers prepare for emerging crime trends over the next few years
+
+---
+
+## For Non-Technical Readers
+
+No need to understand the code — focus on:
+
+* Visuals showing crime and resilience across countries
+* Predictions of which countries are at risk
+* Impacts these findings could have on safety and stability
+
+---
+
+## Technical Summary
+
+### Data Pipeline
+
+1. **Source:** Africa Organised Crime Index 2023
+2. **Preprocessing:** Cleaning, normalization, feature engineering
+3. **EDA:** Visualizations and feature analysis
+4. **Modeling:** Random Forest with SMOTE + scaling
+5. **Future Predictions:** Time series forecasting (ARIMA, LSTM)
+6. **Evaluation:** Confusion matrix and accuracy reports
+
+---
+
+## How to Reproduce This Project
+
+Follow these steps to set up and run the project on your local machine:
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/Vin-Jex/CrimeFighting.git
+cd CrimeFighting
 ```
 
-#### b. Handling Class Imbalance
-- Applied SMOTE oversampling
-- Dropped classes with fewer than 7 samples
+### 2. Set Up a Virtual Environment
 
-```python
-smote = SMOTE(k_neighbors=3, random_state=42)
-X_train, y_train = smote.fit_resample(X_train, y_train)
+It's best to isolate dependencies using `venv`.
+
+```bash
+# Create a virtual environment
+python -m venv venv
+
+# Activate it
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
 ```
 
-#### c. Feature Scaling
-- Standardized features using StandardScaler
+### 3. Install Requirements
 
-```python
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
-```
+Make sure you have `pip` installed and then run:
 
-#### d. Model Training
-- Random Forest Classifier (200 estimators)
-- Trained on processed data
-
-```python
-clf = RandomForestClassifier(n_estimators=200, random_state=42)
-clf.fit(X_train, y_train)
-```
-
-### 7. Model Evaluation
-
-#### a. Classification Report
-- Precision, recall, and F1-score metrics
-
-#### b. Confusion Matrix
-- Visualized model performance across classes
-
-![Confusion Matrix](images/confusion_matrix.png)
-*Figure 6: Confusion matrix showing model performance*
-
-```python
-print(classification_report(y_test, y_pred, zero_division=1))
-```
-
-### 8. Results Interpretation
-
-Key findings:
-- Identified most predictive temporal features
-- Determined peak crime periods
-- Revealed category-specific patterns
-- Achieved [X]% accuracy in crime category prediction
-
-## How to Reproduce
-
-1. Install requirements:
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Run the analysis:
+### 4. Run the Analysis
+
 ```bash
 python crime_analysis.py
 ```
 
-3. View results in:
-- `images/` directory for visualizations
-- `sa_crime_data_transformed.csv` for processed data
+### 5. View the Outputs
+
+* 📂 `images/` – for all generated charts and graphs
+* 📄 [interactive\_3d\_plot.html](images/interactive_3d_plot.html) — open in any browser for a 3D visualization
+* 📄 [interactive\_regional\_forecast.html](images/interactive_regional_forecast.html) — open in any browser for regional crime predictions
+* 📁 `africa_crime_data_transformed.csv` – cleaned dataset used for modeling
+
+---
 
 ## Future Work
-- Incorporate geographic visualization
-- Expand temporal analysis with time series forecasting
-- Include socioeconomic factors for richer analysis
+
+* Integrate geographic visualization using Folium or GeoPandas
+* Add more recent data and time series projections
+* Analyze intervention success rates over time
+* Improve forecasting models for better accuracy and reliability
+
+---
 
 ## Team Members
-- [Name 1]
-- [Name 2]
-- [Name 3]
-- [Name 4]
+
+* Okereke Ifeanyi Vincent
+* \[Name 2]
+* \[Name 3]
+* \[Name 4]
